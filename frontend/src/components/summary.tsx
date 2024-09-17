@@ -1,20 +1,22 @@
 import { CheckCircle2, Plus } from 'lucide-react'
 import { Progress, ProgressIndicator } from './ui/progress-bar'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from './ui/button'
 import { DialogTrigger } from './ui/dialog'
 import { InOrbitIcon } from './in-orbit-icon'
-import { OutlineButton } from './ui/outline-button'
 import { PendingGoals } from './pending-goals'
 import { Separator } from './ui/separator'
+import { changeDesiredWeekFrequency } from '../http/change-desired-week-frequency'
 import dayjs from 'dayjs'
 import { getSummary } from '../http/get-summary'
 import ptBR from 'dayjs/locale/pt-br'
-import { useQuery } from '@tanstack/react-query'
 
 dayjs.locale(ptBR)
 
 export function Summary() {
+  const queryClient = useQueryClient()
+
   const { data } = useQuery({
     queryKey: ['summary'],
     queryFn: getSummary,
@@ -28,6 +30,11 @@ export function Summary() {
   const lastDayOfWeek = dayjs().endOf('week').format('D MMM')
   const completedPercentage = Math.round((data.completed * 100) / data.total)
 
+  async function handleDeleteGoalCompletion({ goalId }: { goalId: string }) {
+    await changeDesiredWeekFrequency(goalId)
+    queryClient.invalidateQueries({ queryKey: ['summary'] })
+    queryClient.invalidateQueries({ queryKey: ['pending-goals'] })
+  }
   return (
     <div className="py-10 max-w-[480px] px-5 mx-auto flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -91,6 +98,15 @@ export function Summary() {
                         <span className=" text-zinc-100">"{goal.title}"</span>{' '}
                         às <span className=" text-zinc-100"> {time}h</span>
                       </span>
+                      <button
+                        className="text-zinc-500 text-xs leading-5 underline underline-offset-2 hover:text-zinc-400"
+                        type="button"
+                        onClick={() => {
+                          handleDeleteGoalCompletion({ goalId: goal.id })
+                        }}
+                      >
+                        Desfazer
+                      </button>
                     </li>
                   )
                 })}
